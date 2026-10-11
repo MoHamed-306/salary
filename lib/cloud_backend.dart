@@ -173,12 +173,78 @@ class CloudDataStore {
         .toList();
   }
 
+  Future<bool> employeeHasPassword(String employeeId) async {
+    final response = await CloudBackend.client.rpc(
+      'company_employee_password_status',
+      params: {
+        'p_session_token': session.token,
+        'p_employee_id': employeeId,
+      },
+    );
+    return response as bool;
+  }
+
+  Future<bool> verifyEmployeePassword({
+    required String employeeId,
+    required String password,
+  }) async {
+    final response = await CloudBackend.client.rpc(
+      'company_verify_employee_password',
+      params: {
+        'p_session_token': session.token,
+        'p_employee_id': employeeId,
+        'p_password': password,
+      },
+    );
+    return response as bool;
+  }
+
+  Future<bool> updateEmployeePassword({
+    required String employeeId,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final response = await CloudBackend.client.rpc(
+      'company_update_employee_password',
+      params: {
+        'p_session_token': session.token,
+        'p_employee_id': employeeId,
+        'p_current_password': currentPassword,
+        'p_new_password': newPassword,
+      },
+    );
+    return response as bool;
+  }
+
+  Future<Map<String, dynamic>> getEmployeePasswordForManager(
+    String employeeId,
+  ) async {
+    final response = await CloudBackend.client.rpc(
+      'company_get_employee_password',
+      params: {
+        'p_session_token': session.token,
+        'p_employee_id': employeeId,
+      },
+    );
+    return Map<String, dynamic>.from(response as Map);
+  }
+
   Future<Map<String, dynamic>> createEmployee(String name) async {
     final response = await CloudBackend.client.rpc(
       'company_create_employee',
       params: {'p_session_token': session.token, 'p_name': name},
     );
     return Map<String, dynamic>.from(response as Map);
+  }
+
+  Future<void> deleteEmployee(String employeeId) async {
+    await CloudBackend.client.rpc(
+      'company_delete_employee',
+      params: {
+        'p_session_token': session.token,
+        'p_employee_id': employeeId,
+      },
+    );
   }
 
   Future<List<Map<String, dynamic>>> loadMonths(String employeeId) async {
@@ -207,6 +273,50 @@ class CloudDataStore {
     );
   }
 
+  Future<String> getAttendanceMode() async {
+    final response = await CloudBackend.client.rpc(
+      'company_get_attendance_mode',
+      params: {'p_session_token': session.token},
+    );
+    return response as String;
+  }
+
+  Future<void> setAttendanceMode(String mode) async {
+    await CloudBackend.client.rpc(
+      'company_set_attendance_mode',
+      params: {
+        'p_session_token': session.token,
+        'p_mode': mode,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> loadTodayAttendance(String employeeId) async {
+    final response = await CloudBackend.client.rpc(
+      'company_get_today_attendance',
+      params: {
+        'p_session_token': session.token,
+        'p_employee_id': employeeId,
+      },
+    );
+    return Map<String, dynamic>.from(response as Map);
+  }
+
+  Future<Map<String, dynamic>> recordAttendanceAction({
+    required String employeeId,
+    required String action,
+  }) async {
+    final response = await CloudBackend.client.rpc(
+      'company_record_attendance_action',
+      params: {
+        'p_session_token': session.token,
+        'p_employee_id': employeeId,
+        'p_action': action,
+      },
+    );
+    return Map<String, dynamic>.from(response as Map);
+  }
+
   Future<void> deleteMonth(String employeeId, int year, int month) async {
     await CloudBackend.client.rpc(
       'company_delete_month',
@@ -223,6 +333,36 @@ class CloudDataStore {
     final response = await CloudBackend.client.rpc(
       'superadmin_list_companies',
       params: {'p_session_token': session.token},
+    );
+    return (response as List)
+        .map((row) => Map<String, dynamic>.from(row as Map))
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> listCompanyEmployees(
+    String companyId,
+  ) async {
+    final response = await CloudBackend.client.rpc(
+      'superadmin_list_company_employees',
+      params: {
+        'p_session_token': session.token,
+        'p_company_id': companyId,
+      },
+    );
+    return (response as List)
+        .map((row) => Map<String, dynamic>.from(row as Map))
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> listEmployeeMonthsForSuperadmin(
+    String employeeId,
+  ) async {
+    final response = await CloudBackend.client.rpc(
+      'superadmin_list_employee_months',
+      params: {
+        'p_session_token': session.token,
+        'p_employee_id': employeeId,
+      },
     );
     return (response as List)
         .map((row) => Map<String, dynamic>.from(row as Map))
@@ -268,6 +408,16 @@ class CloudDataStore {
         'p_employee_password': employeePassword,
         'p_manager_username': managerUsername.trim(),
         'p_manager_password': managerPassword,
+      },
+    );
+  }
+
+  Future<void> deleteCompany(String companyId) async {
+    await CloudBackend.client.rpc(
+      'superadmin_delete_company',
+      params: {
+        'p_session_token': session.token,
+        'p_company_id': companyId,
       },
     );
   }

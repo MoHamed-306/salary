@@ -16,6 +16,11 @@ class _FakeEmployeeStore extends EmployeeStore {
     _employees.add(employee);
     return employee;
   }
+
+  @override
+  Future<void> deleteEmployee(EmployeeRecord employee) async {
+    _employees.removeWhere((entry) => entry.id == employee.id);
+  }
 }
 
 void main() {
@@ -51,6 +56,27 @@ void main() {
 
     expect(find.text('تطبيق الموظفين'), findsOneWidget);
     expect(find.text('Shared Employee'), findsOneWidget);
+  });
+
+  testWidgets('deleting an employee removes it from the manager list', (
+    tester,
+  ) async {
+    final store = _FakeEmployeeStore();
+    await store.createEmployee('Delete Me');
+
+    await tester.pumpWidget(
+      MaterialApp(home: EmployeesPage(store: store)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('حذف موظف'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Delete Me').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'حذف'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete Me'), findsNothing);
   });
 
   test('manager and employee stores share employee month records', () async {

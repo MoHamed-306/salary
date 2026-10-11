@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:employee_salary/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 class _EmptyMonthStore extends MonthStore {
   @override
@@ -10,6 +11,8 @@ class _EmptyMonthStore extends MonthStore {
 }
 
 void main() {
+  setUpAll(() => initializeDateFormatting('ar'));
+
   test('a fresh employee month store has no months', () async {
     final directory = await Directory.systemTemp.createTemp('salary-months-');
     try {
@@ -54,5 +57,70 @@ void main() {
     expect(find.text('إضافة شهر'), findsOneWidget);
     expect(find.text('حذف شهر'), findsNothing);
     expect(find.byIcon(Icons.delete_outline), findsNothing);
+  });
+
+  testWidgets('superadmin month view is read-only and shows salary details', (
+    tester,
+  ) async {
+    final month = MonthRecord(
+      year: 2026,
+      month: 10,
+      hourlyRate: 50,
+      vacationDays: 2,
+      workDays: 30,
+      days: {1: const DayRecord(arrival: '09:00', departure: '17:00')},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MonthPage(
+          month: month,
+          store: MonthStore(readOnlyMonths: [month]),
+          readOnly: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('إجمالي المرتب'), findsOneWidget);
+    expect(find.text('سعر الساعة'), findsOneWidget);
+    expect(find.text('أيام العمل'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(
+      tester.widgetList<Checkbox>(find.byType(Checkbox)).every(
+            (checkbox) => checkbox.onChanged == null,
+          ),
+      isTrue,
+    );
+  });
+
+  testWidgets('superadmin employee folder exposes months without edit actions',
+      (
+    tester,
+  ) async {
+    final month = MonthRecord(year: 2026, month: 10);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MonthsPage(
+          store: MonthStore(readOnlyMonths: [month]),
+          userName: 'Test Employee',
+          readOnly: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('أكتوبر 2026'), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(find.text('إضافة شهر'), findsNothing);
+    expect(find.text('حذف شهر'), findsNothing);
+  });
+
+  test('read-only month store rejects writes', () async {
+    final month = MonthRecord(year: 2026, month: 10);
+    final store = MonthStore(readOnlyMonths: [month]);
+
+    expect(() => store.save(month), throwsStateError);
+    expect(() => store.delete(month), throwsStateError);
   });
 }

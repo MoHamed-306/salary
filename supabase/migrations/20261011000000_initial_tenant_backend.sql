@@ -395,6 +395,22 @@ begin
 end;
 $$;
 
+create or replace function public.superadmin_delete_company(
+  p_session_token text,
+  p_company_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public._is_superadmin(p_session_token) then raise exception 'unauthorized'; end if;
+  delete from public.companies where id = p_company_id;
+  if not found then raise exception 'company not found'; end if;
+end;
+$$;
+
 create or replace function public.company_list_employees(p_session_token text)
 returns jsonb
 language plpgsql
@@ -429,6 +445,27 @@ begin
   insert into public.employees(company_id, name)
   values (v_company_id, trim(p_name)) returning * into v_employee;
   return jsonb_build_object('id', v_employee.id, 'name', v_employee.name);
+end;
+$$;
+
+create or replace function public.company_delete_employee(
+  p_session_token text,
+  p_employee_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_company_id uuid := public._session_company(p_session_token);
+begin
+  if v_company_id is null or public._session_role(p_session_token) <> 'manager' then
+    raise exception 'unauthorized';
+  end if;
+  delete from public.employees
+  where id = p_employee_id and company_id = v_company_id;
+  if not found then raise exception 'employee not found'; end if;
 end;
 $$;
 
@@ -540,8 +577,10 @@ grant execute on function public.app_session_logout(text) to anon, authenticated
 grant execute on function public.superadmin_list_companies(text) to anon, authenticated;
 grant execute on function public.superadmin_create_company(text, text, text, text, text, text) to anon, authenticated;
 grant execute on function public.superadmin_update_company(text, uuid, boolean, text, text, text, text) to anon, authenticated;
+grant execute on function public.superadmin_delete_company(text, uuid) to anon, authenticated;
 grant execute on function public.company_list_employees(text) to anon, authenticated;
 grant execute on function public.company_create_employee(text, text) to anon, authenticated;
+grant execute on function public.company_delete_employee(text, uuid) to anon, authenticated;
 grant execute on function public.company_list_months(text, uuid) to anon, authenticated;
 grant execute on function public.company_save_month(text, uuid, integer, integer, jsonb) to anon, authenticated;
 grant execute on function public.company_delete_month(text, uuid, integer, integer) to anon, authenticated;
