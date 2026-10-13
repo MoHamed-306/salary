@@ -1,4 +1,4 @@
-name: Build Windows apps
+name: Build Windows employee app
 
 on:
   push:
@@ -10,6 +10,10 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      SUPABASE_URL: https://hcelkgycbbheavqkbfes.supabase.co
+      SUPABASE_ANON_KEY: >-
+        eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjZWxrZ3ljYmJoZWF2cWtiZmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2Mzc3OTcsImV4cCI6MjEwNzIxMzc5N30.Cs_CGvru9fkj5AqTLxzFX--XgLw10rD3NYwjcjZXl_U
 
     steps:
       - name: Check out repository
@@ -23,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build employee and manager apps
+      - name: Build employee app
         shell: pwsh
         run: ./tool/build_windows_apps.ps1
 
@@ -32,11 +36,4 @@ jobs:
         with:
           name: employee-app-windows
           path: dist/employee/
-          if-no-files-found: error
-
-      - name: Upload manager app
-        uses: actions/upload-artifact@v4
-        with:
-          name: manager-app-windows
-          path: dist/manager/
           if-no-files-found: error

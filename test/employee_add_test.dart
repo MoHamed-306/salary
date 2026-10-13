@@ -1,10 +1,13 @@
 import 'dart:io';
 
+import 'package:employee_salary/cloud_backend.dart';
 import 'package:employee_salary/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeEmployeeStore extends EmployeeStore {
+  _FakeEmployeeStore({super.cloudSession});
+
   final _employees = <EmployeeRecord>[];
 
   @override
@@ -16,9 +19,71 @@ class _FakeEmployeeStore extends EmployeeStore {
     _employees.add(employee);
     return employee;
   }
+
+  @override
+  Future<void> deleteEmployee(EmployeeRecord employee) async {
+    _employees.removeWhere((entry) => entry.id == employee.id);
+  }
 }
 
 void main() {
+  testWidgets('manager actions and employee folder fit on narrow screens', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(280, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final store = _FakeEmployeeStore(
+      cloudSession: const CloudAppSession(
+        token: 'test-token',
+        role: 'manager',
+        companyId: 'test-company',
+        companyName: 'Test Company',
+        username: 'manager',
+      ),
+    );
+    await store.createEmployee('Visible Employee');
+    expect(await store.loadEmployees(), hasLength(1));
+
+    await tester.pumpWidget(
+      MaterialApp(home: EmployeesPage(store: store)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('نظام الحضور'), findsOneWidget);
+    expect(find.text('إضافة موظف'), findsOneWidget);
+    expect(find.byTooltip('حذف موظف'), findsOneWidget);
+    expect(find.byTooltip('الإنفو'), findsOneWidget);
+    expect(find.text('Visible Employee'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('employee password controls remain visible with employee list', (
+    tester,
+  ) async {
+    final store = _FakeEmployeeStore(
+      cloudSession: const CloudAppSession(
+        token: 'test-token',
+        role: 'employee',
+        companyId: 'test-company',
+        companyName: 'Test Company',
+        username: 'employee',
+      ),
+    );
+    await store.createEmployee('Visible Employee');
+
+    await tester.pumpWidget(
+      MaterialApp(home: EmployeeSelectionPage(store: store)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('إعدادات الباسورد'), findsOneWidget);
+    expect(find.text('Visible Employee'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('adding an employee closes the dialog and refreshes the list', (
     tester,
   ) async {
@@ -51,6 +116,27 @@ void main() {
 
     expect(find.text('تطبيق الموظفين'), findsOneWidget);
     expect(find.text('Shared Employee'), findsOneWidget);
+  });
+
+  testWidgets('deleting an employee removes it from the manager list', (
+    tester,
+  ) async {
+    final store = _FakeEmployeeStore();
+    await store.createEmployee('Delete Me');
+
+    await tester.pumpWidget(
+      MaterialApp(home: EmployeesPage(store: store)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('حذف موظف'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Delete Me').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'حذف'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete Me'), findsNothing);
   });
 
   test('manager and employee stores share employee month records', () async {
